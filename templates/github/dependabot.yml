@@ -1,14 +1,24 @@
 version: 2
 
-# Keep dependencies fresh without manual chasing.
-# Patch updates are auto-merged by .github/workflows/dependabot-auto-merge.yml
-# once CI passes. Minor/major updates open PRs for human review.
+# Keep dependencies fresh without manual chasing — but batched (pattern
+# ported from heliotrek issue #206): a weekly cadence once opened 12
+# separate PRs after an idle stretch, each triggering a full CI run
+# (~200 billable minutes for one dependency sweep). Monthly + one
+# grouped PR per ecosystem keeps the same coverage at a few CI runs per
+# sweep. Security advisories are exempt from the schedule — Dependabot
+# opens those PRs immediately regardless.
+#
+# Groups cover minor + patch for ALL dependency types (runtime + dev).
+# Major bumps stay individual PRs for human review. Note the grouped
+# PR's update-type is the highest bump in the group, so the patch-only
+# auto-merge in dependabot-auto-merge.yml usually defers grouped PRs
+# to human review — that's intended.
 
 updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
     open-pull-requests-limit: 5
     commit-message:
       prefix: ci
@@ -16,15 +26,24 @@ updates:
     labels:
       - dependencies
       - github-actions
+    groups:
+      actions-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
 
   # Uncomment the ecosystem block that matches your stack. Delete the rest.
   # Dependabot silently no-ops for ecosystems with no manifest, but keeping
   # unused blocks creates noise in the GitHub "dependency updates" UI.
 
+  # npm scans the whole tree; in a pnpm workspace it picks up every
+  # package.json under apps/ and packages/.
   # - package-ecosystem: npm
   #   directory: /
   #   schedule:
-  #     interval: weekly
+  #     interval: monthly
   #   open-pull-requests-limit: 10
   #   commit-message:
   #     prefix: chore
@@ -33,17 +52,18 @@ updates:
   #     - dependencies
   #     - npm
   #   groups:
-  #     # Group patch + minor dev-deps to cut PR noise.
-  #     dev-dependencies:
-  #       dependency-type: development
+  #     npm-minor-and-patch:
+  #       patterns:
+  #         - "*"
   #       update-types:
   #         - minor
   #         - patch
 
+  # cargo scans the workspace root; picks up every crate via [workspace].members.
   # - package-ecosystem: cargo
   #   directory: /
   #   schedule:
-  #     interval: weekly
+  #     interval: monthly
   #   open-pull-requests-limit: 10
   #   commit-message:
   #     prefix: chore
@@ -51,11 +71,18 @@ updates:
   #   labels:
   #     - dependencies
   #     - cargo
+  #   groups:
+  #     cargo-minor-and-patch:
+  #       patterns:
+  #         - "*"
+  #       update-types:
+  #         - minor
+  #         - patch
 
   # - package-ecosystem: pip
   #   directory: /
   #   schedule:
-  #     interval: weekly
+  #     interval: monthly
   #   open-pull-requests-limit: 10
   #   commit-message:
   #     prefix: chore
@@ -63,3 +90,10 @@ updates:
   #   labels:
   #     - dependencies
   #     - pip
+  #   groups:
+  #     pip-minor-and-patch:
+  #       patterns:
+  #         - "*"
+  #       update-types:
+  #         - minor
+  #         - patch

@@ -37,6 +37,9 @@
     "rustfmt",
     "pydantic",
     "pytest",
+    "pyproject",
+    "lockfile",
+    "lockfiles",
     "godog",
     "behave"
   ],
