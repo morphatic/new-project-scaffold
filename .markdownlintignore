@@ -1,0 +1,11 @@
+# Agent-consumed prompt/template content, not human docs — exempt from
+# markdown style rules. Real docs (README, CLAUDE.md, features/, github/)
+# stay linted.
+node_modules
+plinth/
+templates/claude/commands/
+templates/coding-standards/
+templates/nlspec/
+user/commands/
+# PR templates legitimately start at h2
+templates/github/PULL_REQUEST_TEMPLATE.md

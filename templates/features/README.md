@@ -15,7 +15,7 @@ Not every spec section needs a feature file. Add one per user-visible behavior t
 The step runner is language-specific. The `/bootstrap-<lang>` commands wire up the right one:
 
 | Stack | Runner | Why | Step-definition location |
-|-------|--------|-----|--------------------------|
+| ----- | ------ | --- | ------------------------ |
 | Rust (CLI / lib / backend) | [`cucumber-rs`](https://github.com/cucumber-rs/cucumber) | No UI — Gherkin pins domain logic. | `tests/cucumber.rs` |
 | TypeScript (CLI / lib) | [`@cucumber/cucumber`](https://github.com/cucumber/cucumber-js) | No UI — lightweight, no browser. | `features/steps/` |
 | Next.js | [`playwright-bdd`](https://github.com/vitalets/playwright-bdd) | UI app — scenarios are user-visible flows, need a real browser. | `features/steps/` (async, receive Playwright fixtures) |

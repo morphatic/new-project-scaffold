@@ -55,6 +55,27 @@
     "mypy",
     "subshell",
     "splittable",
+    "Pushback",
+    "inlines",
+    "touchpoint",
+    "llms",
+    "serde",
+    "thiserror",
+    "nextest",
+    "rustc",
+    "rustup",
+    "libappindicator",
+    "librsvg",
+    "libwebkit",
+    "patchelf",
+    "execdir",
+    "fprint",
+    "killall",
+    "okdir",
+    "pkill",
+    "urlencode",
+    "nuxt",
+    "bxit",
     "godog",
     "behave"
   ],
@@ -68,6 +89,7 @@
     ".venv/**",
     "*.lock",
     "*.lockb",
-    "plinth/research/**"
+    "plinth/**",
+    "templates/coding-standards/**"
   ]
 }
