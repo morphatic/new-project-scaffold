@@ -40,6 +40,8 @@
     "pyproject",
     "lockfile",
     "lockfiles",
+    "Prereqs",
+    "fbca",
     "godog",
     "behave"
   ],

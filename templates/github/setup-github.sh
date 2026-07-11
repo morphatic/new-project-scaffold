@@ -6,6 +6,7 @@
 #
 # What it does:
 #   - Sets merge strategy: squash-only, auto-delete head branches
+#   - Creates the standard label set (priority:*, NOT4AI)
 #   - For two-tier repos: sets default branch to develop, protects main + develop
 #   - For trunk-only repos (--trunk-only): protects main only
 #   - Branch protection requires:
@@ -68,6 +69,21 @@ gh repo edit "$OWNER_REPO" \
   --enable-merge-commit=false \
   --enable-rebase-merge=false \
   --delete-branch-on-merge
+
+echo "→ Creating standard labels ..."
+# Priority labels for triage; NOT4AI marks issues that are off-limits to
+# AI agents (human-only judgment, creative direction, operator actions).
+# --force makes re-runs idempotent (updates color/description if present).
+create_label() {
+  gh label create "$1" --color "$2" --description "$3" --force >/dev/null \
+    && echo "  ✓ $1" \
+    || echo "  ⚠ could not create label: $1" >&2
+}
+create_label "priority:critical" "b60205" "Drop everything"
+create_label "priority:high"     "d93f0b" "Next up"
+create_label "priority:medium"   "fbca04" "Soon"
+create_label "priority:low"      "c2e0c6" "Eventually"
+create_label "NOT4AI"            "5319e7" "Human-only: do not assign to or pick up with an AI agent"
 
 # branch_exists: returns 0 if the named branch exists on the remote.
 branch_exists() {
