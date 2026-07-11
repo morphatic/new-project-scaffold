@@ -28,5 +28,5 @@ Branching model: trunk-based (`main` only).
 There is no test suite here (bash script + markdown/YAML templates). The equivalent discipline:
 
 - After changing the `new-project` script or templates, **smoke-test a real scaffold run** in a temp directory (`mkdir /tmp/scaffold-test && cd /tmp/scaffold-test && ~/dev/new-project-scaffold/new-project --desc test --without-staging`) and inspect the output before declaring done.
-- After changing anything in `user/hooks/`, re-run the benchmark: `python3 tools/benchmark_hook.py` (needs the corpus — see tools/README note inside the file).
+- After changing anything in `user/hooks/`, re-run the relevant harness: `python3 tools/benchmark_hook.py` for compound-approver (needs the corpus — see note inside the file), `python3 tools/check_tdd_guard.py` for tdd-guard.
 - Workflow YAML changes should be validated with `gh workflow view` after push, or at minimum a YAML parse.

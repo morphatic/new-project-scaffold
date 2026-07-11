@@ -76,6 +76,11 @@
     "urlencode",
     "nuxt",
     "bxit",
+    "Extensionless",
+    "bskip",
+    "bfdescribe",
+    "bxdescribe",
+    "bfit",
     "godog",
     "behave"
   ],

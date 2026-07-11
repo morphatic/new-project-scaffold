@@ -54,30 +54,44 @@ TEST_PATH_PATTERNS: list[re.Pattern[str]] = [
     )
 ]
 
-# (pattern, human-readable name). Patterns are compiled once.
-_RAW_SKIP_PATTERNS: list[tuple[str, str]] = [
-    (r"\.skip\s*\(",                    "test.skip(...)"),
-    (r"\bxit\s*\(",                     "xit(...) [skipped jasmine test]"),
-    (r"\bxdescribe\s*\(",               "xdescribe(...) [skipped jasmine suite]"),
-    (r"\bfit\s*\(",                     "fit(...) [focused — causes siblings to skip]"),
-    (r"\bfdescribe\s*\(",               "fdescribe(...) [focused — causes siblings to skip]"),
-    (r"\.only\s*\(",                    ".only(...) [focused — causes siblings to skip]"),
-    (r"@pytest\.mark\.skip\b",          "@pytest.mark.skip"),
-    (r"@pytest\.mark\.skipif\b",        "@pytest.mark.skipif"),
-    (r"@pytest\.mark\.xfail\b",         "@pytest.mark.xfail"),
-    (r"@unittest\.skip\b",              "@unittest.skip"),
-    (r"\bpytest\.skip\s*\(",            "pytest.skip(...)"),
-    (r"@Ignore\b",                      "@Ignore (JUnit 4)"),
-    (r"@Disabled\b",                    "@Disabled (JUnit 5)"),
-    (r"#\[ignore[\]\s(=]",              "#[ignore] / #[ignore = ...] (Rust)"),
-    (r"\bt\.Skip(?:Now)?\s*\(",         "t.Skip / t.SkipNow (Go)"),
-    (r"(?m)^\s*@skip\b",                "@skip tag (gherkin)"),
-    (r"(?m)^\s*@ignore\b",              "@ignore tag (gherkin)"),
-    (r"(?m)^\s*@wip\b",                 "@wip tag (gherkin — typically skipped)"),
+# Each pattern is scoped to the file extensions where it is actually a
+# test-skip idiom (None = any file). Unscoped patterns caused false
+# positives: Rust's std `Iterator::skip(n)` / `skip_while(...)` tripped
+# the JS `.skip(` rule in .rs test code (heliotrek, 2026-07), and
+# Python's ubiquitous `model.fit(...)` would trip the Jasmine `fit(`
+# rule. A language's real skip mechanism is still fully covered by its
+# own scoped pattern (Rust → `#[ignore]`, Python → pytest/unittest
+# decorators, etc.).
+_JS = (".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".mts", ".cts")
+_PY = (".py",)
+_JVM = (".java", ".kt", ".kts", ".groovy", ".scala")
+
+# (pattern, human-readable name, extensions or None). Compiled once.
+_RAW_SKIP_PATTERNS: list[tuple[str, str, tuple[str, ...] | None]] = [
+    (r"\.skip\s*\(",                    "test.skip(...)", _JS),
+    (r"\bxit\s*\(",                     "xit(...) [skipped jasmine test]", _JS),
+    (r"\bxdescribe\s*\(",               "xdescribe(...) [skipped jasmine suite]", _JS),
+    (r"\bfit\s*\(",                     "fit(...) [focused — causes siblings to skip]", _JS),
+    (r"\bfdescribe\s*\(",               "fdescribe(...) [focused — causes siblings to skip]", _JS),
+    (r"\.only\s*\(",                    ".only(...) [focused — causes siblings to skip]", _JS),
+    (r"@pytest\.mark\.skip\b",          "@pytest.mark.skip", _PY),
+    (r"@pytest\.mark\.skipif\b",        "@pytest.mark.skipif", _PY),
+    (r"@pytest\.mark\.xfail\b",         "@pytest.mark.xfail", _PY),
+    (r"@unittest\.skip\b",              "@unittest.skip", _PY),
+    (r"\bpytest\.skip\s*\(",            "pytest.skip(...)", _PY),
+    (r"(?m)^\s*@skip(?:If|Unless|if|unless)?\b", "bare @skip decorator (unittest)", _PY),
+    (r"@Ignore\b",                      "@Ignore (JUnit 4)", _JVM),
+    (r"@Disabled\b",                    "@Disabled (JUnit 5)", _JVM),
+    (r"#\[ignore[\]\s(=]",              "#[ignore] / #[ignore = ...] (Rust)", (".rs",)),
+    (r"\bt\.Skip(?:Now)?\s*\(",         "t.Skip / t.SkipNow (Go)", (".go",)),
+    (r"(?m)^\s*@skip\b",                "@skip tag (gherkin)", (".feature",)),
+    (r"(?m)^\s*@ignore\b",              "@ignore tag (gherkin)", (".feature",)),
+    (r"(?m)^\s*@wip\b",                 "@wip tag (gherkin — typically skipped)", (".feature",)),
+    (r"\bskip\s*[:(]",                  "skip: / skip(...) (RSpec)", (".rb",)),
 ]
 
-SKIP_PATTERNS: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(p), name) for p, name in _RAW_SKIP_PATTERNS
+SKIP_PATTERNS: list[tuple[re.Pattern[str], str, tuple[str, ...] | None]] = [
+    (re.compile(p), name, exts) for p, name, exts in _RAW_SKIP_PATTERNS
 ]
 
 
@@ -120,12 +134,19 @@ def has_override(text: str) -> bool:
     return OVERRIDE_MARKER in (text or "")
 
 
-def detect_added_skips(old_text: str, new_text: str) -> list[tuple[str, str]]:
-    """Return (name, matched_snippet) for skip patterns whose count increased."""
+def detect_added_skips(old_text: str, new_text: str, file_path: str) -> list[tuple[str, str]]:
+    """Return (name, matched_snippet) for skip patterns whose count increased.
+
+    Only patterns scoped to the file's extension apply (exts=None applies
+    everywhere). Extensionless paths only match unscoped patterns.
+    """
     added: list[tuple[str, str]] = []
     old_text = old_text or ""
     new_text = new_text or ""
-    for pattern, name in SKIP_PATTERNS:
+    ext = os.path.splitext(file_path)[1].lower()
+    for pattern, name, exts in SKIP_PATTERNS:
+        if exts is not None and ext not in exts:
+            continue
         new_matches = pattern.findall(new_text)
         old_matches = pattern.findall(old_text)
         if len(new_matches) > len(old_matches):
@@ -219,7 +240,7 @@ def main() -> None:
             log(f"ALLOW (override marker): {file_path}")
             sys.exit(0)
 
-        added = detect_added_skips(old_content, new_content)
+        added = detect_added_skips(old_content, new_content, file_path)
         if added:
             reason = build_block_reason(file_path, added, kind="skip")
             log(f"BLOCK Write skip in {file_path}: {[n for n,_ in added]}")
@@ -236,7 +257,7 @@ def main() -> None:
             log(f"ALLOW (override marker): {file_path}")
             sys.exit(0)
 
-        added = detect_added_skips(old_string, new_string)
+        added = detect_added_skips(old_string, new_string, file_path)
         if added:
             reason = build_block_reason(file_path, added, kind="skip")
             log(f"BLOCK Edit skip in {file_path}: {[n for n,_ in added]}")

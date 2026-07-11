@@ -143,11 +143,14 @@ Blocks edits that introduce test-skip/disable patterns or empty out a test file.
 - `*.feature`
 - Any `.rs` file whose content contains `#[cfg(test)]` or `mod tests` (Rust inline-tests convention)
 
-**Blocks these patterns when *added* by the edit:**
+**Blocks these patterns when *added* by the edit** (each scoped to the languages where it's actually a test-skip idiom):
 
-`.skip(`, `.only(`, `xit`, `xdescribe`, `fit`, `fdescribe`, `@pytest.mark.{skip,skipif,xfail}`, `@unittest.skip`, `pytest.skip()`, `@Ignore`, `@Disabled`, `#[ignore]`, `t.Skip`, `t.SkipNow`, gherkin `@skip`/`@ignore`/`@wip` tags.
+- JS/TS: `.skip(`, `.only(`, `xit`, `xdescribe`, `fit`, `fdescribe`
+- Python: `@pytest.mark.{skip,skipif,xfail}`, `@unittest.skip`, `pytest.skip()`, bare `@skip`/`@skipIf`/`@skipUnless`
+- Rust: `#[ignore]` — and ONLY that; `Iterator::skip(...)`/`skip_while(...)` are legitimate std methods and are allowed (false positive found in heliotrek, fixed 2026-07-11)
+- Go: `t.Skip`/`t.SkipNow` · JVM: `@Ignore`, `@Disabled` · Ruby: `skip:`/`skip(` · Gherkin: `@skip`/`@ignore`/`@wip` tags
 
-Count-based — preserving a pre-existing skip during an unrelated edit is fine.
+Count-based — preserving a pre-existing skip during an unrelated edit is fine. Regression checks: `python3 tools/check_tdd_guard.py`.
 
 **Escape hatch:** include the literal marker `tdd-guard: allow-skip` as a comment in the added content. The hook allows the edit; the marker stays in the file and is auditable in `git blame`.
 
