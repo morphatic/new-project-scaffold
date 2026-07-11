@@ -42,6 +42,8 @@
     "lockfiles",
     "Prereqs",
     "fbca",
+    "nslookup",
+    "printenv",
     "godog",
     "behave"
   ],
