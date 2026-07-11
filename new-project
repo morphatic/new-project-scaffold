@@ -198,10 +198,21 @@ Rules (enforced by lefthook + CI, not just convention):
 - **Commit messages use Conventional Commits.** The commit-msg hook enforces the format \`<type>[(<scope>)][!]: <subject>\`. See \`.gitmessage\` for the reference.
 - **Never push directly to $PROTECTED_BRANCHES.** Pre-push hook blocks this; open a PR with \`gh pr create --base $DEFAULT_TARGET --fill\`.
 - **Merge via squash only.** Configured at the repo level by \`.github/setup-github.sh\`.
-- **Wait for CI to pass before merging.** \`gh pr checks --watch <num>\`. Never use \`--admin\` to bypass.
+- **Wait for CI after EVERY push, not just the first of a session.** \`gh pr checks --watch <num>\`. Never use \`--admin\` to bypass.
 - **After merge, branches are auto-deleted** (repo setting).
 
-The first time the repo is pushed to GitHub, run \`bash .github/setup-github.sh\` to apply branch protection, merge strategy, and default-branch settings.
+The first time the repo is pushed to GitHub, run \`bash .github/setup-github.sh\` to apply branch protection, merge strategy, labels, and default-branch settings.
+
+## Pull request workflow
+
+- **Never merge without Morgan's explicit approval.** The flow: discuss and plan, implement via TDD, open the PR when CI is green, then post a summary **with explicit manual-test steps** and WAIT. Morgan runs the app and gives feedback; iterate until he explicitly says "merge" / "ship it". This applies even in \`/loop\` or auto mode.
+- For trivial changes with no user-facing surface, you may *propose* skipping manual verification — as a question, not a unilateral decision.
+- **Call out visible UI changes explicitly in the PR description** (screenshot if practical). Aesthetic quality — styling, layout, customer-visible copy, color, type, spacing, icons, animation — is Morgan's call, not the agent's. Never bury an aesthetic delta under "refactor" or "test infrastructure".
+
+## External services and dependencies
+
+- **Never silently swap a provisioned external service** (geocoder, auth, payments, analytics, hosting, …) to work around a bug. The default diagnosis is "the call site is wrong", not "the service is wrong". If a swap genuinely seems right, propose it and wait.
+- Low-stakes transitive dependency swaps with no behavior change are fine — but say so in the PR for auditability.
 
 ## Testing discipline
 
@@ -210,7 +221,7 @@ This project uses test-driven development. These rules are **hard constraints**,
 1. **Tests come before code.** For any new behavior, write the test (unit or \`features/*.feature\` scenario) first, run it, and confirm it fails for the right reason. Only then write implementation.
 2. **A failing test means the code is wrong.** When a test fails, the default diagnosis is a bug in the code under test. Treat "the test is wrong" as a hypothesis that needs evidence, not the starting assumption.
 3. **Never modify a test to make it pass.** If a test needs to change, the change is driven by a deliberate spec update — document the reason in the commit message, and update \`plinth/specs/\` to match.
-4. **Never skip, disable, or delete a failing test to unblock yourself.** No \`.skip\`, \`.only\`, \`xit\`, \`xdescribe\`, \`@pytest.mark.skip\`, \`@Ignore\`, \`#[ignore]\`, \`t.Skip\`, gherkin \`@skip\`/\`@ignore\`/\`@wip\`. The \`tdd-guard\` hook blocks these edits globally; if the hook is ever off, the rule still applies. If a test is genuinely obsolete, delete it with a commit message explaining what behavior stopped existing and why.
+4. **Never skip, disable, or delete a failing test to unblock yourself.** No \`.skip\`, \`.only\`, \`xit\`, \`xdescribe\`, \`@pytest.mark.skip\`, \`@Ignore\`, \`#[ignore]\`, \`t.Skip\`, gherkin \`@skip\`/\`@ignore\`/\`@wip\`. The \`tdd-guard\` hook blocks these edits globally; if the hook is ever off, the rule still applies. If a test seems genuinely obsolete or a skip seems genuinely warranted (e.g. "it's slow"), ask Morgan first — then delete/skip with a commit message explaining why.
 5. **"Done" means the full suite passes.** Run \`pnpm test\` / \`cargo test\` / the project's suite command before declaring a task complete. Type-checks and linters pass is necessary but not sufficient.
 6. **Acceptance tests live in \`features/\`.** User-visible behaviors get a Gherkin scenario. See \`features/README.md\` for the workflow and the per-stack runner setup.
 7. **Tests are first-class code.** Same quality bar for naming, structure, and review. Flaky tests are bugs; fix them, don't retry-loop them.
