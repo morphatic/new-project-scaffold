@@ -1,0 +1,298 @@
+#!/usr/bin/env bash
+#
+# new-project — scaffold a new project with plinth/, NLSpec templates, Claude
+# settings, baseline config files, lefthook hooks, and a GitHub CI/CD workflow.
+#
+# Run from inside an empty target folder. Usage:
+#
+#   new-project                         Use folder name as project slug;
+#                                       prompt for description and branching model.
+#   new-project --desc "one-liner"      Skip the description prompt.
+#   new-project --with-staging          Two-tier branching (main + develop). Default.
+#   new-project --without-staging       Trunk-based branching (main only). For libraries.
+#   new-project --force                 Allow running in a non-empty folder.
+#   new-project --help                  Show this help.
+
+set -euo pipefail
+
+# --- arg parsing ---------------------------------------------------------
+
+PROJECT_DESC=""
+FORCE=0
+WITH_STAGING=""   # empty = ask; "yes" or "no" = skip the prompt
+
+print_help() {
+  sed -n '2,/^$/p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --desc)
+      PROJECT_DESC="${2:-}"
+      shift 2
+      ;;
+    --desc=*)
+      PROJECT_DESC="${1#--desc=}"
+      shift
+      ;;
+    --with-staging)
+      WITH_STAGING=yes
+      shift
+      ;;
+    --without-staging)
+      WITH_STAGING=no
+      shift
+      ;;
+    --force)
+      FORCE=1
+      shift
+      ;;
+    --help|-h)
+      print_help
+      exit 0
+      ;;
+    *)
+      echo "new-project: unknown argument: $1" >&2
+      echo "Run 'new-project --help' for usage." >&2
+      exit 2
+      ;;
+  esac
+done
+
+# --- resolve paths -------------------------------------------------------
+
+# Script directory (handles symlinks on platforms where readlink -f exists).
+if command -v readlink >/dev/null 2>&1 && readlink -f "$0" >/dev/null 2>&1; then
+  SCRIPT_PATH="$(readlink -f "$0")"
+else
+  SCRIPT_PATH="$0"
+fi
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+TEMPLATES_DIR="$SCRIPT_DIR/templates"
+
+if [[ ! -d "$TEMPLATES_DIR" ]]; then
+  echo "new-project: template directory not found at $TEMPLATES_DIR" >&2
+  exit 1
+fi
+
+TARGET_DIR="$(pwd)"
+PROJECT_SLUG="$(basename "$TARGET_DIR")"
+
+# --- preconditions -------------------------------------------------------
+
+if [[ $FORCE -eq 0 ]]; then
+  # Non-empty check (ignore . and ..).
+  if [[ -n "$(ls -A "$TARGET_DIR" 2>/dev/null)" ]]; then
+    echo "new-project: target folder is not empty: $TARGET_DIR" >&2
+    echo "Re-run with --force to scaffold anyway." >&2
+    exit 1
+  fi
+  # Existing git repo check.
+  if [[ -d "$TARGET_DIR/.git" ]]; then
+    echo "new-project: target folder is already a git repo: $TARGET_DIR" >&2
+    echo "Re-run with --force to scaffold anyway." >&2
+    exit 1
+  fi
+fi
+
+# --- description prompt --------------------------------------------------
+
+if [[ -z "$PROJECT_DESC" ]]; then
+  echo "Project slug: $PROJECT_SLUG"
+  printf "One-line project description: "
+  IFS= read -r PROJECT_DESC
+  if [[ -z "$PROJECT_DESC" ]]; then
+    PROJECT_DESC="(Description pending — fill in during /spec-quick.)"
+  fi
+fi
+
+if [[ -z "$WITH_STAGING" ]]; then
+  echo ""
+  echo "Branching model:"
+  echo "  [Y] Two-tier (main + develop) — default. Good for apps, services, sites with staging envs."
+  echo "  [n] Trunk-based (main only)    — simpler. Good for libraries and small utilities."
+  printf "Include staging branch? [Y/n]: "
+  IFS= read -r ans
+  case "${ans,,}" in
+    n|no) WITH_STAGING=no ;;
+    *)    WITH_STAGING=yes ;;
+  esac
+fi
+
+# --- copy templates ------------------------------------------------------
+
+echo "Scaffolding $PROJECT_SLUG in $TARGET_DIR ..."
+
+# Root-level config files.
+cp "$TEMPLATES_DIR/config/.editorconfig"     "$TARGET_DIR/.editorconfig"
+cp "$TEMPLATES_DIR/config/.gitignore"        "$TARGET_DIR/.gitignore"
+cp "$TEMPLATES_DIR/config/cspell.json"       "$TARGET_DIR/cspell.json"
+cp "$TEMPLATES_DIR/config/.markdownlint.json" "$TARGET_DIR/.markdownlint.json"
+
+# .claude/ (settings + commands).
+mkdir -p "$TARGET_DIR/.claude/commands"
+cp "$TEMPLATES_DIR/claude/settings.json"          "$TARGET_DIR/.claude/settings.json"
+cp "$TEMPLATES_DIR/claude/commands/spec-quick.md"     "$TARGET_DIR/.claude/commands/spec-quick.md"
+cp "$TEMPLATES_DIR/claude/commands/spec-interview.md" "$TARGET_DIR/.claude/commands/spec-interview.md"
+cp "$TEMPLATES_DIR/claude/commands/spec-audit.md"     "$TARGET_DIR/.claude/commands/spec-audit.md"
+
+# plinth/ structure.
+mkdir -p "$TARGET_DIR/plinth/specs" "$TARGET_DIR/plinth/research" "$TARGET_DIR/plinth/planning"
+cp "$TEMPLATES_DIR/plinth/planning/bootstrap-language.md" "$TARGET_DIR/plinth/planning/bootstrap-language.md"
+
+# features/ (Gherkin/BDD scaffold — runner wired up later by /bootstrap-<lang>).
+mkdir -p "$TARGET_DIR/features"
+cp "$TEMPLATES_DIR/features/README.md"      "$TARGET_DIR/features/README.md"
+cp "$TEMPLATES_DIR/features/example.feature" "$TARGET_DIR/features/example.feature"
+
+# NLSpec templates — copied from the nlspec/ template dir, renamed to use the slug.
+for src in "$TEMPLATES_DIR/nlspec/_name_.nlspec.index.md" \
+           "$TEMPLATES_DIR/nlspec/_name_.nlspec.md" \
+           "$TEMPLATES_DIR/nlspec/_name_.nlspec.rationale.md"; do
+  base="$(basename "$src")"
+  dest_name="${base/_name_/$PROJECT_SLUG}"
+  cp "$src" "$TARGET_DIR/plinth/specs/$dest_name"
+done
+
+# lefthook + commit message template.
+cp "$TEMPLATES_DIR/lefthook.yml" "$TARGET_DIR/lefthook.yml"
+cp "$TEMPLATES_DIR/gitmessage"   "$TARGET_DIR/.gitmessage"
+
+# .github/ (workflows, PR template, setup script, lefthook scripts).
+cp -r "$TEMPLATES_DIR/github" "$TARGET_DIR/.github"
+chmod +x "$TARGET_DIR/.github/setup-github.sh" 2>/dev/null || true
+chmod +x "$TARGET_DIR/.github/hooks/"*.sh 2>/dev/null || true
+
+# --- generate CLAUDE.md and plinth/README.md -----------------------------
+
+if [[ "$WITH_STAGING" == "yes" ]]; then
+  BRANCH_MODEL_DESC="two-tier (\`main\` + \`develop\`). Feature branches merge into \`develop\`; \`develop\` merges into \`main\` for release."
+  PROTECTED_BRANCHES="\`main\` and \`develop\`"
+  DEFAULT_TARGET="develop"
+else
+  BRANCH_MODEL_DESC="trunk-based (\`main\` only). Feature branches merge directly into \`main\`."
+  PROTECTED_BRANCHES="\`main\`"
+  DEFAULT_TARGET="main"
+fi
+
+cat > "$TARGET_DIR/CLAUDE.md" <<EOF
+# $PROJECT_SLUG
+
+$PROJECT_DESC
+
+## Working in this project
+
+This project follows Morgan's standard conventions:
+
+- **\`plinth/\`** holds all agent-facing context: specs, research, and planning. Load from here when you need background on the project.
+- **Specs use the tiered NLSpec format** (index + contract + rationale). Start with \`plinth/specs/$PROJECT_SLUG.nlspec.index.md\` to orient, then load the contract (\`.nlspec.md\`) for implementation work. Pull the rationale (\`.nlspec.rationale.md\`) only when you hit a judgment call.
+- **Slash commands:** \`/spec-quick\` to draft an NLSpec from a freeform description, \`/spec-interview\` for the structured interview flow, \`/spec-audit\` for completeness audits.
+
+## Git workflow
+
+Branching model: $BRANCH_MODEL_DESC
+
+Rules (enforced by lefthook + CI, not just convention):
+
+- **Never commit directly to $PROTECTED_BRANCHES.** The pre-commit hook blocks this. Create a working branch: \`git checkout -b feat/<slug>\` or \`fix/<slug>\`, \`chore/\`, \`docs/\`, \`refactor/\`, \`test/\`, \`perf/\`.
+- **Commit messages use Conventional Commits.** The commit-msg hook enforces the format \`<type>[(<scope>)][!]: <subject>\`. See \`.gitmessage\` for the reference.
+- **Never push directly to $PROTECTED_BRANCHES.** Pre-push hook blocks this; open a PR with \`gh pr create --base $DEFAULT_TARGET --fill\`.
+- **Merge via squash only.** Configured at the repo level by \`.github/setup-github.sh\`.
+- **Wait for CI to pass before merging.** \`gh pr checks --watch <num>\`. Never use \`--admin\` to bypass.
+- **After merge, branches are auto-deleted** (repo setting).
+
+The first time the repo is pushed to GitHub, run \`bash .github/setup-github.sh\` to apply branch protection, merge strategy, and default-branch settings.
+
+## Testing discipline
+
+This project uses test-driven development. These rules are **hard constraints**, not suggestions:
+
+1. **Tests come before code.** For any new behavior, write the test (unit or \`features/*.feature\` scenario) first, run it, and confirm it fails for the right reason. Only then write implementation.
+2. **A failing test means the code is wrong.** When a test fails, the default diagnosis is a bug in the code under test. Treat "the test is wrong" as a hypothesis that needs evidence, not the starting assumption.
+3. **Never modify a test to make it pass.** If a test needs to change, the change is driven by a deliberate spec update — document the reason in the commit message, and update \`plinth/specs/\` to match.
+4. **Never skip, disable, or delete a failing test to unblock yourself.** No \`.skip\`, \`.only\`, \`xit\`, \`xdescribe\`, \`@pytest.mark.skip\`, \`@Ignore\`, \`#[ignore]\`, \`t.Skip\`, gherkin \`@skip\`/\`@ignore\`/\`@wip\`. The \`tdd-guard\` hook blocks these edits globally; if the hook is ever off, the rule still applies. If a test is genuinely obsolete, delete it with a commit message explaining what behavior stopped existing and why.
+5. **"Done" means the full suite passes.** Run \`pnpm test\` / \`cargo test\` / the project's suite command before declaring a task complete. Type-checks and linters pass is necessary but not sufficient.
+6. **Acceptance tests live in \`features/\`.** User-visible behaviors get a Gherkin scenario. See \`features/README.md\` for the workflow and the per-stack runner setup.
+7. **Tests are first-class code.** Same quality bar for naming, structure, and review. Flaky tests are bugs; fix them, don't retry-loop them.
+
+These rules exist because the worst failure mode for agent-driven development is green tests that don't reflect reality. Keep the feedback loop honest.
+
+## Current state
+
+This project is freshly scaffolded. The NLSpec files are empty templates. Next step: run \`/spec-quick\` to draft the initial spec, or fill the templates manually.
+
+If a language/stack has not been chosen yet, see \`plinth/planning/bootstrap-language.md\` for the checklist to run when one is. The CI workflow (\`.github/workflows/ci.yml\`) has a placeholder \`test\` job with language-specific templates in comments — uncomment the block matching your stack.
+EOF
+
+cat > "$TARGET_DIR/plinth/README.md" <<EOF
+# plinth/
+
+The foundation of this project. Holds agent-facing context — specs, research, planning — that informs implementation work without belonging in the runtime codebase.
+
+Named after the architectural plinth (the base a column stands on).
+
+## Layout
+
+- \`specs/\` — NLSpec files in the tiered format (index + contract + rationale).
+- \`research/\` — domain investigations, prior art reviews, comparative analyses.
+- \`planning/\` — roadmaps, todos, state, bootstrap checklists.
+
+## Conventions
+
+- Specs are the binding source of truth for implementation. When a spec and the code disagree, the spec is right until the spec is deliberately updated.
+- Research artifacts are dated and attributed. They capture a point-in-time understanding; they are not automatically kept current.
+- Planning documents are mutable and should be kept up to date as the project progresses.
+EOF
+
+# --- git init + initial commit + lefthook ------------------------------
+
+(
+  cd "$TARGET_DIR"
+  # Pin the initial branch to `main` regardless of the user's
+  # `init.defaultBranch` global config. We conditionally create `develop` below.
+  git init --quiet --initial-branch=main
+  git config commit.template .gitmessage
+
+  # Initial commit before installing hooks so we don't trip the
+  # no-commit-on-protected-branch guard on the scaffold commit itself.
+  git add .
+  git commit --quiet -m "chore: initial project structure
+
+Scaffolded via new-project. Includes plinth/ with empty NLSpec tier
+templates, features/ Gherkin scaffold, baseline config (.editorconfig,
+cspell, markdownlint, .gitignore, .gitmessage), .claude/ with minimal
+allow-list and slash command stubs, .github/ CI workflow + PR template
++ setup script, lefthook.yml, and CLAUDE.md with TDD discipline rules
+pointing into plinth/."
+
+  if command -v lefthook >/dev/null 2>&1; then
+    lefthook install >/dev/null 2>&1 || true
+  else
+    echo "  ⚠ lefthook not found on PATH. Install with: pnpm add -g lefthook"
+    echo "     Then run: lefthook install"
+  fi
+
+  if [[ "$WITH_STAGING" == "yes" ]]; then
+    # Create develop as a sibling of main at the same commit; switch to it so
+    # the user's next commit lands on develop (the integration branch).
+    git branch develop
+    git checkout --quiet develop
+  fi
+)
+
+# --- done ---------------------------------------------------------------
+
+echo ""
+echo "Done. $PROJECT_SLUG scaffolded."
+echo ""
+if [[ "$WITH_STAGING" == "yes" ]]; then
+  echo "Branching: two-tier (main + develop). Current branch: develop."
+else
+  echo "Branching: trunk-based (main only). Current branch: main."
+fi
+echo ""
+echo "Next steps:"
+echo "  1. Open Claude Code in this folder:       claude"
+echo "  2. Draft the initial spec:                /spec-quick"
+echo "  3. When a stack is chosen:                see plinth/planning/bootstrap-language.md"
+echo "  4. After 'gh repo create' + first push:   bash .github/setup-github.sh$([[ "$WITH_STAGING" == "no" ]] && echo " --trunk-only")"

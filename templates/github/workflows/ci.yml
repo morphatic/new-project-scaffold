@@ -1,0 +1,92 @@
+name: CI
+
+# All node-based actions pinned to major versions that run on Node 22+ runtime.
+# If you ever downgrade an action, verify its action.yml doesn't request node20.
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install linters
+        run: pnpm add -g cspell markdownlint-cli
+
+      - name: cspell
+        if: hashFiles('cspell.json') != ''
+        run: cspell --no-progress --no-summary "**/*" --exclude node_modules --exclude target --exclude dist
+
+      - name: markdownlint
+        if: hashFiles('.markdownlint.json') != ''
+        run: markdownlint "**/*.md" --ignore node_modules --ignore target --ignore dist
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # Language-specific test steps go here. Examples (uncomment as appropriate):
+      #
+      # --- Rust ---
+      # - uses: dtolnay/rust-toolchain@stable
+      # - uses: Swatinem/rust-cache@v2
+      # - run: cargo test --all-features
+      #
+      # --- Python (uv) ---
+      # - uses: astral-sh/setup-uv@v3
+      # - run: uv sync
+      # - run: uv run pytest
+      #
+      # --- Node (pnpm) ---
+      # - uses: pnpm/action-setup@v4
+      #   with: { version: 10 }
+      # - uses: actions/setup-node@v5
+      #   with: { node-version: 22, cache: pnpm }
+      # - run: pnpm install --frozen-lockfile
+      # - run: pnpm test
+      #
+      # --- Go ---
+      # - uses: actions/setup-go@v5
+      #   with: { go-version: '1.23' }
+      # - run: go test ./...
+      - name: placeholder
+        run: echo "Add language-specific test steps — see comments above. This job currently passes trivially."
+
+  ci:
+    # Aggregate gate. Configure branch protection to require THIS check only —
+    # individual jobs can be renamed or added without updating protection rules.
+    name: CI (required check)
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    if: ${{ always() }}
+    steps:
+      - name: Verify all required jobs passed
+        run: |
+          if [[ "${{ needs.lint.result }}" != "success" || "${{ needs.test.result }}" != "success" ]]; then
+            echo "One or more required jobs failed:"
+            echo "  lint: ${{ needs.lint.result }}"
+            echo "  test: ${{ needs.test.result }}"
+            exit 1
+          fi
+          echo "All required checks passed."

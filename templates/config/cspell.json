@@ -1,0 +1,22 @@
+{
+  "$schema": "https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json",
+  "version": "0.2",
+  "language": "en",
+  "words": [
+    "NLSpec",
+    "plinth",
+    "cspell",
+    "markdownlint"
+  ],
+  "flagWords": [],
+  "ignorePaths": [
+    "node_modules/**",
+    ".git/**",
+    "dist/**",
+    "build/**",
+    "target/**",
+    ".venv/**",
+    "*.lock",
+    "*.lockb"
+  ]
+}

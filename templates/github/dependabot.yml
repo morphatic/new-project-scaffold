@@ -1,0 +1,65 @@
+version: 2
+
+# Keep dependencies fresh without manual chasing.
+# Patch updates are auto-merged by .github/workflows/dependabot-auto-merge.yml
+# once CI passes. Minor/major updates open PRs for human review.
+
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: ci
+      include: scope
+    labels:
+      - dependencies
+      - github-actions
+
+  # Uncomment the ecosystem block that matches your stack. Delete the rest.
+  # Dependabot silently no-ops for ecosystems with no manifest, but keeping
+  # unused blocks creates noise in the GitHub "dependency updates" UI.
+
+  # - package-ecosystem: npm
+  #   directory: /
+  #   schedule:
+  #     interval: weekly
+  #   open-pull-requests-limit: 10
+  #   commit-message:
+  #     prefix: chore
+  #     include: scope
+  #   labels:
+  #     - dependencies
+  #     - npm
+  #   groups:
+  #     # Group patch + minor dev-deps to cut PR noise.
+  #     dev-dependencies:
+  #       dependency-type: development
+  #       update-types:
+  #         - minor
+  #         - patch
+
+  # - package-ecosystem: cargo
+  #   directory: /
+  #   schedule:
+  #     interval: weekly
+  #   open-pull-requests-limit: 10
+  #   commit-message:
+  #     prefix: chore
+  #     include: scope
+  #   labels:
+  #     - dependencies
+  #     - cargo
+
+  # - package-ecosystem: pip
+  #   directory: /
+  #   schedule:
+  #     interval: weekly
+  #   open-pull-requests-limit: 10
+  #   commit-message:
+  #     prefix: chore
+  #     include: scope
+  #   labels:
+  #     - dependencies
+  #     - pip
