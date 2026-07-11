@@ -58,7 +58,7 @@ Execute every step from `~/.claude/commands/bootstrap-typescript.md` first, **wi
 
 ### 1. Load the Next.js standards
 
-Read `~/dev/claude_research/new-projects/templates/coding-standards/coding-standards-nextjs.md`. Copy it to `plinth/coding-standards-nextjs.md` (always at repo root, not `$TARGET`). Note that `plinth/coding-standards-typescript.md` (copied by Part A) is its prerequisite — both apply.
+Read `~/dev/new-project-scaffold/templates/coding-standards/coding-standards-nextjs.md`. Copy it to `plinth/coding-standards-nextjs.md` (always at repo root, not `$TARGET`). Note that `plinth/coding-standards-typescript.md` (copied by Part A) is its prerequisite — both apply.
 
 ### 2. Install Next.js into `$TARGET`
 

@@ -47,7 +47,7 @@ Workspace-mode flag: treat `$TARGET != "."` as "workspace mode." In workspace mo
 
 ### 1. Load the standards
 
-Read `~/dev/claude_research/new-projects/templates/coding-standards/coding-standards-rust.md`. Binding style guide for Rust in this project — every decision below flows from it.
+Read `~/dev/new-project-scaffold/templates/coding-standards/coding-standards-rust.md`. Binding style guide for Rust in this project — every decision below flows from it.
 
 ### 2. Copy the standards into the project
 

@@ -24,9 +24,18 @@ if hasattr(sys.stdout, "reconfigure"):
 from collections import Counter, defaultdict
 from pathlib import Path
 
-HOOK_PATH = Path.home() / ".claude" / "hooks" / "compound-approver.py"
-CONFIG_PATH = Path.home() / ".claude" / "hooks" / "compound-approver-config.json"
-COMMANDS_PATH = Path(__file__).parent / "bash_commands.json"
+# Benchmark the VERSIONED sources in user/hooks/ (what you edit), not the
+# live copies in ~/.claude/hooks/ (what install.sh syncs).
+_REPO_HOOKS = Path(__file__).resolve().parent.parent / "user" / "hooks"
+HOOK_PATH = _REPO_HOOKS / "compound-approver.py"
+CONFIG_PATH = _REPO_HOOKS / "compound-approver-config.json"
+# The 7.7 MB corpus stays in claude_research; override with BENCH_CORPUS.
+COMMANDS_PATH = Path(
+    os.environ.get(
+        "BENCH_CORPUS",
+        Path.home() / "dev" / "claude_research" / "permissions-mastery" / "bash_commands.json",
+    )
+)
 
 
 def load_hook_module():

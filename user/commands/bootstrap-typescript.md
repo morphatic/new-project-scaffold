@@ -47,7 +47,7 @@ Workspace-mode flag: treat `$TARGET != "."` as "workspace mode." In workspace mo
 
 ### 1. Load the standards
 
-Read `~/dev/claude_research/new-projects/templates/coding-standards/coding-standards-typescript.md`. Binding style guide for TS in this project.
+Read `~/dev/new-project-scaffold/templates/coding-standards/coding-standards-typescript.md`. Binding style guide for TS in this project.
 
 ### 2. Copy the standards into the project
 

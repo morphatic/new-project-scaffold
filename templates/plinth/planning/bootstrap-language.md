@@ -15,7 +15,7 @@ Ordered by stack. Framework commands automatically run their language prerequisi
 
 Each command:
 
-1. Loads the binding coding standards from `~/dev/claude_research/new-projects/templates/coding-standards/coding-standards-<lang>.md`.
+1. Loads the binding coding standards from `~/dev/new-project-scaffold/templates/coding-standards/coding-standards-<lang>.md`.
 2. Copies those standards into `plinth/coding-standards-<lang>.md` so they live with the repo.
 3. Checks current stable versions at runtime — **never** trusts version numbers in training data or documentation.
 4. Installs blessed tooling, writes config files, uncomments the matching CI block, adds a minimal failing test, and updates release-please for the right release-type.

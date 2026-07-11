@@ -49,6 +49,12 @@
     "readlink",
     "geocoder",
     "mktemp",
+    "winget",
+    "heredocs",
+    "pycache",
+    "mypy",
+    "subshell",
+    "splittable",
     "godog",
     "behave"
   ],

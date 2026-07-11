@@ -58,7 +58,7 @@ Execute every step from `~/.claude/commands/bootstrap-typescript.md`, **with the
 
 ### 1. Load the Tauri standards
 
-Read `~/dev/claude_research/new-projects/templates/coding-standards/coding-standards-tauri.md`. Copy it to `plinth/coding-standards-tauri.md`. The Rust and TypeScript standards docs (already in `plinth/` from Parts A and B) also apply.
+Read `~/dev/new-project-scaffold/templates/coding-standards/coding-standards-tauri.md`. Copy it to `plinth/coding-standards-tauri.md`. The Rust and TypeScript standards docs (already in `plinth/` from Parts A and B) also apply.
 
 ### 2. Scaffold the app
 

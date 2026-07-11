@@ -1,11 +1,21 @@
-# new-projects — scaffold, hooks, and workflow commands
+# new-project-scaffold — scaffold, hooks, and workflow commands
 
 Morgan's infrastructure for starting new projects with sensible defaults and keeping agents on rails while they work.
 
-Two layers:
+Three layers:
 
 1. **Scaffold** (`new-project` script + `templates/`) — run once per new project. Creates directory structure, configs, spec templates, and an initial git commit.
-2. **Global hooks** (in `~/.claude/hooks/`) — installed once, apply to every project you open with Claude Code.
+2. **User-level assets** (`user/hooks/` + `user/commands/`) — the global Claude Code hooks and slash commands, versioned here and synced into `~/.claude/` by `install.sh`. Edit the sources here, never the live copies.
+3. **This repo's own docs** (`plinth/`) — the design checklist and rationale behind the system.
+
+After cloning or editing anything under `user/`, run:
+
+```bash
+bash install.sh          # sync user/hooks + user/commands into ~/.claude/
+bash install.sh --dry-run
+```
+
+`install.sh` does not touch `~/.claude/settings.json` — hook *registration* lives there and changes rarely; see "Global hooks" below for the expected blocks.
 
 ---
 
@@ -14,7 +24,7 @@ Two layers:
 Installed globally on the machine:
 
 | Tool | Why | How |
-|------|-----|-----|
+| ---- | --- | --- |
 | Python 3 | All hooks are Python scripts | Already present |
 | Git | Scaffold does `git init`; hooks look for `.git` to locate repo root | Already present |
 | `pnpm` | Node package manager Morgan uses globally | `winget install pnpm.pnpm` (or equivalent) |
@@ -63,13 +73,15 @@ What you get:
 - `.github/hooks/no-commit-on-protected.sh` — pre-commit, blocks commits on `main`/`master`/`develop`.
 - `.github/hooks/conventional-commits.sh` — commit-msg, enforces `<type>[(<scope>)][!]: <desc>`.
 - `.github/hooks/no-push-to-protected.sh` — pre-push, blocks pushes from a protected branch.
-- `.github/workflows/ci.yml` — lint + test + required-check aggregate. Node v22, pnpm v10. Test job has commented per-language templates to uncomment.
+- `.github/workflows/ci.yml` — compute-budget CI (pattern ported from heliotrek): a `changes` path-filter job gates `test` and `audit` so pushes only run jobs whose inputs could have changed; `lint` always runs; a weekly full-matrix schedule + `workflow_dispatch` keep the filters honest; every job carries `timeout-minutes`; the `CI (required check)` aggregate accepts success-or-skipped via `jq`. Test job has commented per-language templates to uncomment.
+- `.github/workflows/audit.yml` — reusable dependency-advisory workflow: called from ci.yml when the dependency graph changes, plus a daily self-schedule so new CVEs surface even when no code is moving. Ecosystem steps activate automatically when a lockfile appears.
 - `.github/PULL_REQUEST_TEMPLATE.md` — What / Why / Testing / Spec impact / Checklist.
-- `.github/dependabot.yml` — weekly github-actions updates; per-ecosystem blocks (npm, cargo, pip) commented and ready to enable.
+- `.github/ISSUE_TEMPLATE/` — structured bug / enhancement / docs forms (intent, acceptance criteria, spec anchor, visible-UI flag).
+- `.github/dependabot.yml` — monthly, minor+patch grouped into one PR per ecosystem (majors individual); npm/cargo/pip blocks commented and ready to enable.
 - `.github/workflows/dependabot-auto-merge.yml` — auto-enables squash-merge on dependabot patch PRs once required checks pass.
 - `.github/workflows/release-please.yml` + `release-please-config.json` + `.release-please-manifest.json` — release-please reads the Conventional Commits on `main` and opens/maintains a release PR with version bump + `CHANGELOG.md`. Merging that PR tags the release. Default release-type is `simple` (manages `version.txt` + changelog); switch to `node`/`rust`/`python` in the config when the stack is chosen.
-- `.github/setup-github.sh` — one-shot GitHub config: squash-merge only, auto-delete branches, branch protection on `main` (+ `develop` when two-tier), required status check = `CI (required check)`, `enforce_admins: true`.
-- `CLAUDE.md` — pointer into `plinth/`, plus a git-workflow section and hard TDD discipline rules (tests-first; never skip/disable; never edit a test to make it pass; done means the full suite passes).
+- `.github/setup-github.sh` — one-shot GitHub config: squash-merge only, auto-delete branches, standard labels (`priority:*`, `NOT4AI`), branch protection on `main` (+ `develop` when two-tier), required status check = `CI (required check)`, `enforce_admins: true`.
+- `CLAUDE.md` — pointer into `plinth/`, plus git-workflow, PR-workflow (never merge without explicit approval; manual-test steps + wait), external-service (no silent provider swaps; aesthetics is Morgan's call) and hard TDD discipline rules (tests-first; never skip/disable; never edit a test to make it pass; done means the full suite passes).
 - Initial git commit on `main`, then a switch to `develop` (if two-tier). Lefthook installed.
 
 Next:
@@ -90,7 +102,7 @@ Next:
 
 ## Global hooks (installed — no per-project action required)
 
-All live in `~/.claude/hooks/` and are registered in `~/.claude/settings.json`. They apply to every project you open.
+Versioned sources live in `user/hooks/` in this repo; the live copies in `~/.claude/hooks/` are synced by `install.sh` and registered in `~/.claude/settings.json`. They apply to every project you open. To change a hook: edit `user/hooks/`, run `bash install.sh`, and re-run `python3 tools/benchmark_hook.py` for compound-approver changes.
 
 ### 1. compound-approver (PreToolUse / Bash)
 
@@ -153,7 +165,7 @@ Debug: `TDD_GUARD_LOG=1` → `tdd-guard.log`.
 
 ## Slash commands
 
-Installed at user level (`~/.claude/commands/`), so they work in every project:
+Versioned sources live in `user/commands/`; installed at user level (`~/.claude/commands/`) via `install.sh`, so they work in every project:
 
 - **`/spec-interview`** — structured NLSpec interview. Requires prodkit at `~/dev/prodkit/`. Three depth tiers (Quick / Standard / Deep). Produces `<name>.nlspec.{md,rationale.md,index.md,audit.md}`.
 - **`/spec-audit`** — standalone completeness audit against any existing NLSpec. Writes `<name>.nlspec.audit.md`. Read-only; doesn't modify the spec.
@@ -201,9 +213,11 @@ The gitignore-autoupdate and tdd-guard hooks need no per-project setup — they 
 
 ## Key file locations
 
-```
-~/dev/claude_research/new-projects/
+```text
+~/dev/new-project-scaffold/
   new-project                  # scaffold script (bash)
+  install.sh                   # syncs user/ into ~/.claude/
+  plinth/                      # this repo's own design docs (checklist + rationale convo)
   templates/                   # what the scaffold copies
     config/                    # .editorconfig, .gitignore, cspell.json, .markdownlint.json
     claude/                    # settings.json + commands/spec-*.md
@@ -219,40 +233,46 @@ The gitignore-autoupdate and tdd-guard hooks need no per-project setup — they 
     gitmessage                 # Conventional Commits template (copied as .gitmessage)
     github/
       workflows/
-        ci.yml                     # lint + test + aggregate CI job
+        ci.yml                     # path-filtered lint + test + audit + aggregate gate
+        audit.yml                  # reusable dependency-advisory workflow (daily self-schedule)
         dependabot-auto-merge.yml  # auto-squash-merges patch updates
         release-please.yml         # opens/maintains a release PR from commits
+      ISSUE_TEMPLATE/              # structured bug / enhancement / docs forms
       PULL_REQUEST_TEMPLATE.md
-      dependabot.yml               # weekly update schedule per ecosystem
+      dependabot.yml               # monthly grouped update schedule per ecosystem
       release-please-config.json   # release-please config (release-type, changelog sections)
       .release-please-manifest.json  # tracks current version (starts at 0.0.0)
-      setup-github.sh              # one-shot branch protection + merge-strategy setup
+      setup-github.sh              # one-shot branch protection + labels + merge-strategy setup
       hooks/                       # scripts referenced from lefthook.yml
         no-commit-on-protected.sh
         conventional-commits.sh
         no-push-to-protected.sh
+  user/                        # versioned sources for ~/.claude/ (sync via install.sh)
+    commands/
+      spec-interview.md
+      spec-audit.md
+      bootstrap-monorepo.md
+      bootstrap-rust.md
+      bootstrap-typescript.md
+      bootstrap-nextjs.md
+      bootstrap-tauri.md
+    hooks/
+      compound-approver.py
+      compound-approver-config.json
+      gitignore-autoupdate.py
+      lint-on-write.py
+      tdd-guard.py
+  tools/
+    benchmark_hook.py          # measures compound-approver approval rate after config changes
 
 ~/.claude/
-  settings.json                # hooks + permissions registered here
-  commands/                    # user-level slash commands
-    spec-interview.md
-    spec-audit.md
-    bootstrap-rust.md
-    bootstrap-typescript.md
-    bootstrap-nextjs.md
-    bootstrap-tauri.md
-  hooks/
-    compound-approver.py
-    compound-approver-config.json
-    gitignore-autoupdate.py
-    lint-on-write.py
-    tdd-guard.py
-    *.log                      # debug logs (only when env vars set)
+  settings.json                # hooks + permissions REGISTERED here (not managed by install.sh)
+  commands/                    # live copies — synced from user/commands/
+  hooks/                       # live copies — synced from user/hooks/ (+ *.log debug output)
 
 ~/dev/prodkit/                  # optional — required for /spec-interview
 ~/dev/claude_research/permissions-mastery/
   bash_commands.json           # 10,143 historical commands for benchmarking compound-approver
-  benchmark_hook.py            # re-run to measure approval rate after config changes
   interrogating-cc-logs.md     # notes on session-log schema
 ```
 
@@ -262,22 +282,22 @@ The gitignore-autoupdate and tdd-guard hooks need no per-project setup — they 
 
 Items from the new-project checklist and related automation ideas that have not been built:
 
-**Hook / permissions**
+### Hook / permissions
 
 - **Red-before-green hook** — PostToolUse captures test-runner output, PreToolUse on source Write/Edit requires a recent failing test. v2 of the TDD enforcement story.
 - **compound-approver v2 — `$(...)` subshell unwrap** — would lift approval rate +1.4%. Parser-level change.
 - **Investigate the 162 `<untokenizable>` commands** in the benchmark log for cheap wins.
 - **Adjacency-attack closure on plain-safe first tokens** (e.g. `ls ;rm -rf /` past the shlex-splittable boundary). Would need a real shell parser.
 
-**Scaffold / per-language**
+### Scaffold / per-language
 
 - **Additional language bootstraps** — Rust, TypeScript, Next.js, Tauri are built (including BDD runner wiring). Python, Go, SvelteKit, and other stacks still need research + a `/bootstrap-<lang>` command + a `coding-standards-<lang>.md`. New language bootstraps should also wire the matching BDD runner (e.g. `behave` for Python, `godog` for Go, `@cucumber/cucumber` for SvelteKit).
 - **`/feature` or `/tdd-feature` slash command** — structured new-feature entry that sequences behavior interview → gherkin → failing test → run-to-fail → implement → run-to-pass via TaskCreate.
 
-**Meta**
+### Meta
 
 - **Always-current todo list** accessible without context regeneration — biggest open design question.
 
 ---
 
-Last updated: 2026-04-14.
+Last updated: 2026-07-11 (promoted to standalone repo; heliotrek CI/CD + workflow-rule port).
