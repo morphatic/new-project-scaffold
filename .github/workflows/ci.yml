@@ -1,0 +1,63 @@
+name: CI
+
+# This repo is markdown, YAML, and one bash script — lint is the whole
+# test surface. The aggregate job mirrors the pattern the templates
+# ship (branch protection requires only "CI (required check)").
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Install linters
+        run: pnpm add -g cspell markdownlint-cli
+
+      - name: cspell
+        run: cspell --no-progress --no-summary "**/*" --exclude node_modules
+
+      - name: markdownlint
+        run: markdownlint "**/*.md" --ignore node_modules
+
+      - name: bash syntax check
+        run: |
+          bash -n new-project
+          bash -n install.sh
+          bash -n templates/github/setup-github.sh
+          for f in templates/github/hooks/*.sh; do bash -n "$f"; done
+
+  ci:
+    name: CI (required check)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [lint]
+    if: ${{ always() }}
+    steps:
+      - name: Verify all required jobs passed or were skipped
+        run: |
+          echo '${{ toJson(needs) }}' | jq -e 'to_entries | all(.value.result == "success" or .value.result == "skipped")' \
+            || (echo "One or more required jobs failed:" \
+                && echo '${{ toJson(needs) }}' | jq 'to_entries | map({job: .key, result: .value.result})' \
+                && exit 1)
+          echo "All required checks passed."
