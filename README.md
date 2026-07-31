@@ -32,6 +32,7 @@ Installed globally on the machine:
 | `markdownlint-cli` | Lint hook invokes `markdownlint` when a project has `.markdownlint.json` | `pnpm add -g markdownlint-cli` |
 | `lefthook` | Scaffolded repos use it for pre-commit / commit-msg / pre-push hooks | `pnpm add -g lefthook` |
 | `gh` CLI | `setup-github.sh` applies branch protection, merge strategy, and default-branch settings via `gh api` | `winget install GitHub.cli`, then `gh auth login` |
+| `uv` (Python stacks only) | `/bootstrap-python` uses it for environments, dependencies, and interpreter installs | `winget install astral-sh.uv` (or `curl -LsSf https://astral.sh/uv/install.sh \| sh`) |
 | `prodkit` (optional) | `/spec-interview` slash command reads its framework | `git clone https://github.com/ramybarsoum/prodkit ~/dev/prodkit` |
 
 Verify with: `pnpm list -g` and `gh auth status`.
@@ -64,7 +65,7 @@ What you get:
 - `plinth/` — agent-facing context (specs, research, planning). See `plinth/README.md`.
 - `plinth/specs/<slug>.nlspec.{index,md,rationale.md}` — empty tiered NLSpec templates.
 - `plinth/planning/bootstrap-language.md` — stub checklist to run once a stack is chosen.
-- `features/README.md` + `features/example.feature` — Gherkin/BDD scaffold. The `/bootstrap-<lang>` commands wire up the matching runner based on whether the project has a UI: `cucumber-rs` (Rust), `@cucumber/cucumber` (plain TS CLI/lib), `playwright-bdd` (Next.js, Tauri — real browser against the frontend; Tauri mocks IPC). Unit tests run via `pnpm test` / `cargo test`; E2E suites run via `pnpm test:e2e`.
+- `features/README.md` + `features/example.feature` — Gherkin/BDD scaffold. The `/bootstrap-<lang>` commands wire up the matching runner based on whether the project has a UI: `cucumber-rs` (Rust), `pytest-bdd` (Python), `@cucumber/cucumber` (plain TS CLI/lib), `playwright-bdd` (Next.js, Tauri — real browser against the frontend; Tauri mocks IPC). Unit tests run via `pnpm test` / `cargo test` / `uv run pytest`; E2E suites run via `pnpm test:e2e`.
 - `.claude/settings.json` — minimal allow-list.
 - `.claude/commands/spec-{quick,interview,audit}.md` — project-level slash commands.
 - `.editorconfig`, `.gitignore`, `cspell.json`, `.markdownlint.json` — baseline configs.
@@ -172,7 +173,9 @@ Versioned sources live in `user/commands/`; installed at user level (`~/.claude/
 
 - **`/spec-interview`** — structured NLSpec interview. Requires prodkit at `~/dev/prodkit/`. Three depth tiers (Quick / Standard / Deep). Produces `<name>.nlspec.{md,rationale.md,index.md,audit.md}`.
 - **`/spec-audit`** — standalone completeness audit against any existing NLSpec. Writes `<name>.nlspec.audit.md`. Read-only; doesn't modify the spec.
-- **`/bootstrap-rust`** / **`/bootstrap-typescript`** / **`/bootstrap-nextjs`** / **`/bootstrap-tauri`** — language/framework bootstraps. Run after the NLSpec has picked a stack. Framework commands automatically run their language prereqs (e.g. `/bootstrap-nextjs` runs the TypeScript setup first; `/bootstrap-tauri` runs both Rust and TypeScript first). Each command copies the matching `coding-standards-<lang>.md` into `plinth/`, checks current stable versions at runtime, writes config files, uncomments the right CI block, installs blessed tooling, scaffolds a minimal failing test, and wires up the matching BDD runner: `cucumber-rs` (Rust), `@cucumber/cucumber` (plain TS CLI/library), `playwright-bdd` (Next.js, Tauri — browser-level BDD with Tauri IPC mocked). Sources: Microsoft Pragmatic Rust Guidelines + Rust API Guidelines; Google TypeScript Style Guide + `@tsconfig/strictest`; Next.js official docs + Vercel security blog; Tauri v2 docs.
+- **`/bootstrap-rust`** / **`/bootstrap-python`** / **`/bootstrap-typescript`** / **`/bootstrap-nextjs`** / **`/bootstrap-tauri`** — language/framework bootstraps. Run after the NLSpec has picked a stack. Framework commands automatically run their language prereqs (e.g. `/bootstrap-nextjs` runs the TypeScript setup first; `/bootstrap-tauri` runs both Rust and TypeScript first). Each command copies the matching `coding-standards-<lang>.md` into `plinth/`, checks current stable versions at runtime, writes config files, uncomments the right CI block, installs blessed tooling, scaffolds a minimal failing test, and wires up the matching BDD runner: `cucumber-rs` (Rust), `pytest-bdd` (Python), `@cucumber/cucumber` (plain TS CLI/library), `playwright-bdd` (Next.js, Tauri — browser-level BDD with Tauri IPC mocked). Sources: Microsoft Pragmatic Rust Guidelines + Rust API Guidelines; Google Python Style Guide + PEP 8 + the typing spec + Polars/pandera docs; Google TypeScript Style Guide + `@tsconfig/strictest`; Next.js official docs + Vercel security blog; Tauri v2 docs.
+
+  `/bootstrap-python` additionally detects a **data profile** — if the NLSpec mentions dataframes, pipelines, analytics, data quality, or ML, it also copies `coding-standards-python-data.md` into `plinth/`, creates the `ingest / contracts / transform / serve` layout, installs the Polars + pandera stack, and wires `nbstripout` into the pre-commit hook. Non-data Python projects skip all of that and stay lean.
 
 And project-level (only in scaffolded projects, via `.claude/commands/`):
 
@@ -229,6 +232,8 @@ The gitignore-autoupdate and tdd-guard hooks need no per-project setup — they 
     nlspec/                    # tiered NLSpec templates
     coding-standards/          # binding standards docs copied by /bootstrap-<lang> commands
       coding-standards-rust.md
+      coding-standards-python.md
+      coding-standards-python-data.md
       coding-standards-typescript.md
       coding-standards-nextjs.md
       coding-standards-tauri.md
@@ -256,6 +261,7 @@ The gitignore-autoupdate and tdd-guard hooks need no per-project setup — they 
       spec-audit.md
       bootstrap-monorepo.md
       bootstrap-rust.md
+      bootstrap-python.md
       bootstrap-typescript.md
       bootstrap-nextjs.md
       bootstrap-tauri.md
@@ -294,7 +300,7 @@ Items from the new-project checklist and related automation ideas that have not 
 
 ### Scaffold / per-language
 
-- **Additional language bootstraps** — Rust, TypeScript, Next.js, Tauri are built (including BDD runner wiring). Python, Go, SvelteKit, and other stacks still need research + a `/bootstrap-<lang>` command + a `coding-standards-<lang>.md`. New language bootstraps should also wire the matching BDD runner (e.g. `behave` for Python, `godog` for Go, `@cucumber/cucumber` for SvelteKit).
+- **Additional language bootstraps** — Rust, Python, TypeScript, Next.js, Tauri are built (including BDD runner wiring). Go, SvelteKit, and other stacks still need research + a `/bootstrap-<lang>` command + a `coding-standards-<lang>.md`. New language bootstraps should also wire the matching BDD runner (e.g. `godog` for Go, `@cucumber/cucumber` for SvelteKit).
 - **`/feature` or `/tdd-feature` slash command** — structured new-feature entry that sequences behavior interview → gherkin → failing test → run-to-fail → implement → run-to-pass via TaskCreate.
 
 ### Meta

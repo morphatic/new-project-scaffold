@@ -20,7 +20,7 @@ The step runner is language-specific. The `/bootstrap-<lang>` commands wire up t
 | TypeScript (CLI / lib) | [`@cucumber/cucumber`](https://github.com/cucumber/cucumber-js) | No UI — lightweight, no browser. | `features/steps/` |
 | Next.js | [`playwright-bdd`](https://github.com/vitalets/playwright-bdd) | UI app — scenarios are user-visible flows, need a real browser. | `features/steps/` (async, receive Playwright fixtures) |
 | Tauri (frontend-only) | [`playwright-bdd`](https://github.com/vitalets/playwright-bdd) | Webview UI — drives frontend in Chromium with IPC mocked via `@tauri-apps/api/mocks`. | `features/steps/` + `features/support/tauri-mocks.ts` |
-| Python | [`behave`](https://github.com/behave/behave) | _(bootstrap not yet built)_ | `features/steps/` |
+| Python (CLI / lib / pipeline / API) | [`pytest-bdd`](https://github.com/pytest-dev/pytest-bdd) | No UI — runs inside pytest, so fixtures, coverage, and plugins apply to steps. | `tests/features/` |
 | Go | [`godog`](https://github.com/cucumber/godog) | _(bootstrap not yet built)_ | `features/` (Go files alongside) |
 
 **Rule of thumb:** if the project has a browser UI, use `playwright-bdd`. Otherwise use the language's plain cucumber runner. Full desktop E2E for Tauri (real window, native menus) is a separate, heavier setup — `tauri-driver` + WebdriverIO — not covered here.

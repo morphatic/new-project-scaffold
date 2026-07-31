@@ -9,6 +9,8 @@ Ordered by stack. Framework commands automatically run their language prerequisi
 | Stack | Command |
 |-------|---------|
 | Rust | `/bootstrap-rust` |
+| Python (services, CLIs, libraries) | `/bootstrap-python` |
+| Python (data science, pipelines, data quality) | `/bootstrap-python` — detects the data profile and layers on the dataframe + data-contract stack |
 | TypeScript (Node.js, libraries, CLIs) | `/bootstrap-typescript` |
 | Next.js (App Router) | `/bootstrap-nextjs` — runs the TypeScript bootstrap first, then adds Next.js |
 | Tauri v2 (desktop + optional mobile) | `/bootstrap-tauri` — runs Rust and TypeScript bootstraps first, then adds Tauri |
@@ -22,9 +24,8 @@ Each command:
 
 ## If your stack isn't listed
 
-The following stacks don't have bootstrap commands yet — if you hit one, build the command from the pattern in the existing four, and add a `coding-standards-<lang>.md` via research:
+The following stacks don't have bootstrap commands yet — if you hit one, build the command from the pattern in the existing five, and add a `coding-standards-<lang>.md` via research:
 
-- Python
 - Go
 - SvelteKit
 - Others on demand

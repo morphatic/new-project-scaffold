@@ -159,8 +159,16 @@ jobs:
       # - run: cargo test --workspace
       #
       # --- Python (uv) ---
-      # - uses: astral-sh/setup-uv@v3
-      # - run: uv sync
+      # Order matters: lint, format, types, then tests. Never pass --fix
+      # or run `ruff format` without --check in CI — a job that mutates
+      # the tree hides the failure it should report.
+      # - uses: astral-sh/setup-uv@v9
+      #   with: { enable-cache: true }
+      # - run: uv python install
+      # - run: uv sync --locked --all-groups
+      # - run: uv run ruff check --output-format=github .
+      # - run: uv run ruff format --check .
+      # - run: uv run mypy src tests
       # - run: uv run pytest
       #
       # --- Node (pnpm) ---

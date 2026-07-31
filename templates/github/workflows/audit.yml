@@ -79,7 +79,7 @@ jobs:
       # --- Python (uv) ---------------------------------------------------
       # Uncomment when a Python stack lands (pip-audit reads the
       # environment, so it needs the sync first):
-      # - uses: astral-sh/setup-uv@v3
+      # - uses: astral-sh/setup-uv@v9
       #   if: hashFiles('uv.lock') != ''
       # - run: uv sync
       #   if: hashFiles('uv.lock') != ''
@@ -87,5 +87,5 @@ jobs:
       #   if: hashFiles('uv.lock') != ''
 
       - name: No auditable lockfiles present
-        if: hashFiles('pnpm-lock.yaml') == '' && hashFiles('Cargo.lock') == ''
+        if: hashFiles('pnpm-lock.yaml') == '' && hashFiles('Cargo.lock') == '' && hashFiles('uv.lock') == ''
         run: echo "No lockfiles found — nothing to audit yet. This job activates automatically once a stack lands a lockfile."
