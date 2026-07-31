@@ -42,8 +42,10 @@ Verify with: `pnpm list -g` and `gh auth status`.
 pnpm installs `lefthook` as a bash shim (no `.exe`), so lefthook's generated git-hook scripts can't locate the binary by the usual resolution order. Add this to `~/.bash_profile`:
 
 ```bash
-export LEFTHOOK_BIN=/c/Users/Morgan/AppData/Local/pnpm/lefthook
+export LEFTHOOK_BIN="$(cygpath -u "$LOCALAPPDATA")/pnpm/lefthook"
 ```
+
+(Or hardcode the path if `cygpath` isn't on PATH — it resolves to `/c/Users/<you>/AppData/Local/pnpm/lefthook`.)
 
 Without this, `git commit` / `git push` will fail with "lefthook not found" after `lefthook install`.
 

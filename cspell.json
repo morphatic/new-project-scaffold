@@ -110,7 +110,9 @@
     "pyrefly",
     "bandit",
     "Databricks",
-    "astral"
+    "astral",
+    "LOCALAPPDATA",
+    "cygpath"
   ],
   "flagWords": [],
   "ignorePaths": [
