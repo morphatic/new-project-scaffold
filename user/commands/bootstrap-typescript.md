@@ -67,15 +67,48 @@ In workspace mode: give the package a real `"name"` (e.g., `"@<repo>/<target-lea
 
 ### 5. Install dev dependencies
 
-Look up current versions, then install (inside `$TARGET`):
+Look up current versions, then install (inside `$TARGET`).
+
+**Pin TypeScript to `typescript-eslint`'s supported range — do not install
+`typescript@latest`.** Run
+`npm view typescript-eslint peerDependencies.typescript` and install the
+newest TypeScript inside that range, pinned in `package.json`. As of
+2026-08 the range is `>=4.8.4 <6.1.0` while `typescript@latest` is `7.0.2`,
+so the correct install is `typescript@6`. Installing latest yields a
+project whose lint job cannot start at all:
+
+```text
+Error: typescript-eslint does not support TS 7.0.
+```
+
+**This is a standing constraint, not ecosystem lag awaiting a bump.**
+TypeScript 7 is the native Go port; the compiler itself is fine
+(`tsc`, `--noEmit`, and `.d.ts` emission all work — only the lint path is
+pinned). Supporting it means typescript-eslint talking to a compiler
+outside the JavaScript heap, which is blocked on three unbuilt pieces:
+ESLint has no async parsers, the port is still experimental, and rules
+need JavaScript AST nodes carried across the Go/WASM boundary. See
+[typescript-eslint#10940](https://github.com/typescript-eslint/typescript-eslint/issues/10940)
+— labelled *blocked by external API*, no milestone, no timeline.
+
+Because `tseslint.configs.strictTypeChecked` is the binding lint baseline
+in the coding standards, a lint path that will not load is disqualifying.
+Re-test by installing `typescript@7` and running `pnpm lint`; unpin only
+if it passes. Watch the issue, not the version number.
 
 ```bash
-pnpm add -D typescript @tsconfig/strictest @tsconfig/node-lts \
+pnpm add -D typescript@<newest in typescript-eslint's supported range> \
+  @tsconfig/strictest @tsconfig/node-lts \
   eslint @eslint/js typescript-eslint \
   prettier eslint-config-prettier \
-  eslint-plugin-import \
+  eslint-plugin-import-x \
   @types/node
 ```
+
+Use `eslint-plugin-import-x`, not `eslint-plugin-import`. The latter still
+declares `eslint: ^2 || ... || ^9` in its peer deps and has not shipped
+ESLint 10 support; `import-x` is the maintained fork and declares
+`^8.57 || ^9 || ^10`. Rule names change accordingly (`import-x/...`).
 
 In workspace mode, run from repo root with `pnpm add -D --filter <target-package-name> ...` OR `cd $TARGET && pnpm add -D ...` — both work.
 
@@ -118,27 +151,60 @@ Adjust `rootDir` / `include` / `paths` to match the package's actual layout.
 
 ```js
 import eslint from '@eslint/js';
-import tseslint from 'typescript-eslint';
+import { defineConfig, globalIgnores } from 'eslint/config';
 import eslintConfigPrettier from 'eslint-config-prettier';
+import importX from 'eslint-plugin-import-x';
+import tseslint from 'typescript-eslint';
 
-export default tseslint.config(
+export default defineConfig([
+  globalIgnores(['dist/**', 'node_modules/**', 'coverage/**', 'docs/api/**']),
+
   eslint.configs.recommended,
   tseslint.configs.strictTypeChecked,
   tseslint.configs.stylisticTypeChecked,
+
   {
     languageOptions: {
       parserOptions: {
-        projectService: true,
+        // Root config files are outside tsconfig's `include`, so the
+        // project service cannot resolve them and type-aware linting
+        // fails with "<file> was not found by the project service".
+        projectService: {
+          allowDefaultProject: ['*.config.js', '*.config.mjs', '*.config.ts'],
+        },
         tsconfigRootDir: import.meta.dirname,
       },
     },
+    plugins: { 'import-x': importX },
     rules: {
       'no-console': 'warn',
+      // Named exports only — see the coding standards.
+      'import-x/no-default-export': 'error',
     },
   },
+
+  {
+    // Tools load config files via default export, so the ban above would
+    // make every config file in the project an error — including this one.
+    files: ['**/*.config.{js,cjs,mjs,ts,mts,cts}'],
+    rules: { 'import-x/no-default-export': 'off' },
+  },
+
   eslintConfigPrettier,
-);
+]);
 ```
+
+Three things here are load-bearing; changing them reintroduces a bug that
+fails the lint job the scaffold itself generates:
+
+1. **`defineConfig`, not `tseslint.config()`.** `typescript-eslint`
+   deprecated its helper in favour of ESLint core's `defineConfig`. Since
+   this config also enables `strictTypeChecked`, the deprecation is caught
+   by `@typescript-eslint/no-deprecated` — so the old form failed lint on
+   a fresh project with no user code.
+2. **`allowDefaultProject`.** With a bare `projectService: true`, ESLint
+   cannot type-check its own config file. See the comment above.
+3. **The `*.config.*` override.** Required by the named-exports-only rule.
 
 ### 8. Write `.prettierrc.json` at REPO ROOT (never per-package)
 

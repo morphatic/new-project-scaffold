@@ -128,6 +128,25 @@ cp "$TEMPLATES_DIR/config/.editorconfig"     "$TARGET_DIR/.editorconfig"
 cp "$TEMPLATES_DIR/config/.gitignore"        "$TARGET_DIR/.gitignore"
 cp "$TEMPLATES_DIR/config/cspell.json"       "$TARGET_DIR/cspell.json"
 cp "$TEMPLATES_DIR/config/.markdownlint.json" "$TARGET_DIR/.markdownlint.json"
+cp "$TEMPLATES_DIR/config/.markdownlintignore" "$TARGET_DIR/.markdownlintignore"
+
+# Seed the project's own name into the cspell word list. Coined project
+# names (heliotrek, morphemeris, astrologyjs) aren't dictionary words, and
+# they land in CLAUDE.md and the spec filenames from the very first commit —
+# without this the `lint` CI job fails on a freshly scaffolded project.
+# Hyphen/underscore parts are added too, since cspell tokenizes on them.
+slug_words="$(
+  { echo "$PROJECT_SLUG"; echo "$PROJECT_SLUG" | tr '_-' '\n\n'; } \
+    | awk 'length($0) >= 3' | sort -u
+)"
+if [[ -n "$slug_words" ]]; then
+  slug_json="$(printf '    "%s",\n' $slug_words)"
+  awk -v ins="$slug_json" '
+    { print }
+    /"words": \[/ && !inserted { printf "%s\n", ins; inserted = 1 }
+  ' "$TARGET_DIR/cspell.json" > "$TARGET_DIR/cspell.json.tmp"
+  mv "$TARGET_DIR/cspell.json.tmp" "$TARGET_DIR/cspell.json"
+fi
 
 # .claude/ (settings + commands).
 mkdir -p "$TARGET_DIR/.claude/commands"
