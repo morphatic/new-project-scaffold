@@ -128,6 +128,7 @@ cp "$TEMPLATES_DIR/config/.editorconfig"     "$TARGET_DIR/.editorconfig"
 cp "$TEMPLATES_DIR/config/.gitignore"        "$TARGET_DIR/.gitignore"
 cp "$TEMPLATES_DIR/config/cspell.json"       "$TARGET_DIR/cspell.json"
 cp "$TEMPLATES_DIR/config/.markdownlint.json" "$TARGET_DIR/.markdownlint.json"
+cp "$TEMPLATES_DIR/config/.markdownlintignore" "$TARGET_DIR/.markdownlintignore"
 
 # Seed the project's own name into the cspell word list. Coined project
 # names (heliotrek, morphemeris, astrologyjs) aren't dictionary words, and

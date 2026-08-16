@@ -45,6 +45,7 @@
     ".venv/**",
     "coverage/**",
     "docs/api/**",
+    "CHANGELOG.md",
     "*.lock",
     "*.lockb",
     "pnpm-lock.yaml",

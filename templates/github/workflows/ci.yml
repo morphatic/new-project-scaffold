@@ -129,13 +129,24 @@ jobs:
       - name: Install linters
         run: pnpm add -g cspell markdownlint-cli
 
+      # Exclusions are NOT listed here. They live in `cspell.json`
+      # (ignorePaths) and `.markdownlintignore`, both of which these CLIs
+      # read automatically — so CI, local runs and the lint-on-write hook
+      # all agree, and there is one place to edit. Keeping a second copy
+      # as --exclude/--ignore flags is how the two drift apart.
+      #
+      # Both files already exclude generated output (CHANGELOG.md,
+      # docs/api, coverage). Do not lint generated files: release-please
+      # writes CHANGELOG.md in a style markdownlint rejects, and that
+      # failure lands on the release PR, which branch protection then
+      # refuses to merge — a file no human wrote and none can fix.
       - name: cspell
         if: hashFiles('cspell.json') != ''
-        run: cspell --no-progress --no-summary "**/*" --exclude node_modules --exclude target --exclude dist
+        run: cspell --no-progress --no-summary "**/*"
 
       - name: markdownlint
         if: hashFiles('.markdownlint.json') != ''
-        run: markdownlint "**/*.md" --ignore node_modules --ignore target --ignore dist
+        run: markdownlint "**/*.md"
 
   test:
     name: test

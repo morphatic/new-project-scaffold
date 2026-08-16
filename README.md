@@ -70,7 +70,7 @@ What you get:
 - `features/README.md` + `features/example.feature` — Gherkin/BDD scaffold. The `/bootstrap-<lang>` commands wire up the matching runner based on whether the project has a UI: `cucumber-rs` (Rust), `pytest-bdd` (Python), `@cucumber/cucumber` (plain TS CLI/lib), `playwright-bdd` (Next.js, Tauri — real browser against the frontend; Tauri mocks IPC). Unit tests run via `pnpm test` / `cargo test` / `uv run pytest`; E2E suites run via `pnpm test:e2e`.
 - `.claude/settings.json` — minimal allow-list.
 - `.claude/commands/spec-{quick,interview,audit}.md` — project-level slash commands.
-- `.editorconfig`, `.gitignore`, `cspell.json`, `.markdownlint.json` — baseline configs.
+- `.editorconfig`, `.gitignore`, `cspell.json`, `.markdownlint.json`, `.markdownlintignore` — baseline configs. `cspell.json` is seeded with the project slug at scaffold time (coined names like `heliotrek` aren't dictionary words). Lint exclusions live in `cspell.json`'s `ignorePaths` and `.markdownlintignore` — not in `ci.yml` — so CI, local runs and the lint-on-write hook all agree. Both exclude generated output (`CHANGELOG.md`, `docs/api/`, `coverage/`); linting a release-please changelog is what blocks a project's first release.
 - `.gitmessage` — Conventional Commits reference (wired up via `commit.template`).
 - `lefthook.yml` — runs the three git hooks below.
 - `.github/hooks/no-commit-on-protected.sh` — pre-commit, blocks commits on `main`/`master`/`develop`.
@@ -192,7 +192,7 @@ To use `/spec-quick` in a non-scaffolded project, copy it from `templates/claude
 The global hooks and user-level slash commands already apply. To opt into the lint hook:
 
 1. Copy `templates/config/cspell.json` to the project root to enable cspell.
-2. Copy `templates/config/.markdownlint.json` to the project root to enable markdownlint.
+2. Copy `templates/config/.markdownlint.json` and `templates/config/.markdownlintignore` to the project root to enable markdownlint. Without the ignore file, markdownlint fails on `CHANGELOG.md` the first time release-please writes one.
 3. (Optional) Copy `templates/claude/settings.json` to `.claude/settings.json` for baseline permissions.
 
 To opt into the git workflow bundle:
@@ -227,7 +227,7 @@ The gitignore-autoupdate and tdd-guard hooks need no per-project setup — they 
   install.sh                   # syncs user/ into ~/.claude/
   plinth/                      # this repo's own design docs (checklist + rationale convo)
   templates/                   # what the scaffold copies
-    config/                    # .editorconfig, .gitignore, cspell.json, .markdownlint.json
+    config/                    # .editorconfig, .gitignore, cspell.json, .markdownlint.json, .markdownlintignore
     claude/                    # settings.json + commands/spec-*.md
     plinth/                    # bootstrap-language.md
     features/                  # Gherkin scaffold — README.md + example.feature

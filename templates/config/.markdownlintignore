@@ -1,0 +1,33 @@
+# Files markdownlint must not gate on.
+#
+# Honoured automatically by markdownlint-cli (v1) — the CI `lint` job and
+# the lint-on-write hook both use it, so this file is the single source of
+# truth and CI needs no duplicate --ignore flags.
+# NOTE: markdownlint-cli2 does NOT read this file. If you switch to cli2,
+# re-express these entries as `ignores` in .markdownlint-cli2.jsonc.
+
+node_modules
+target
+dist
+
+# --- Generated: nobody authored these, and nobody can fix them ----------
+#
+# release-please writes CHANGELOG.md with two blank lines between
+# sections; MD012/no-multiple-blanks wants one. That failure surfaces on
+# the release PR — the most expensive possible moment, since branch
+# protection then blocks the release on a file no human can edit.
+CHANGELOG.md
+docs/api/
+coverage/
+
+# --- Agent-facing templates --------------------------------------------
+#
+# plinth/ ships NLSpec scaffolds whose table of contents links to
+# <Placeholder> headings. Those anchors cannot resolve until the
+# placeholders are filled in (MD051), and the instructional blocks use
+# indented bullets inside <...> prose (MD007/MD032). Linting them means
+# mangling authoring guidance to satisfy rules aimed at finished docs.
+#
+# Once your specs are filled in, narrow this to `plinth/planning/` to put
+# plinth/specs/ back under the linter.
+plinth/
