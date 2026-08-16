@@ -4,9 +4,36 @@
   "language": "en",
   "words": [
     "NLSpec",
+    "NLSpecs",
     "plinth",
     "cspell",
-    "markdownlint"
+    "markdownlint",
+    "lefthook",
+    "gitmessage",
+    "venv",
+    "llms",
+    "pnpm",
+    "gherkin",
+    "godog",
+    "tauri",
+    "pytest",
+    "pyproject",
+    "clippy",
+    "rustfmt",
+    "commitizen",
+    "vitest",
+    "typedoc",
+    "tsconfig",
+    "tseslint",
+    "dorny",
+    "dtolnay",
+    "Swatinem",
+    "taiki",
+    "dataframe",
+    "geocoder",
+    "xdescribe",
+    "xfail",
+    "skipif"
   ],
   "flagWords": [],
   "ignorePaths": [
@@ -16,7 +43,12 @@
     "build/**",
     "target/**",
     ".venv/**",
+    "coverage/**",
+    "docs/api/**",
     "*.lock",
-    "*.lockb"
+    "*.lockb",
+    "pnpm-lock.yaml",
+    "package-lock.json",
+    "yarn.lock"
   ]
 }
