@@ -43,7 +43,7 @@ Prefer `undefined` for "not provided / not set" — matches `?` optional semanti
 
 ## Modules
 
-- **Named exports only.** Ban default exports via `import/no-default-export` — except where a framework requires them (e.g. Next.js `page.tsx`, `layout.tsx`).
+- **Named exports only.** Ban default exports via `import-x/no-default-export` — except where a framework requires them (e.g. Next.js `page.tsx`, `layout.tsx`) and for config files, which their tools load by default export. Use `eslint-plugin-import-x`, not `eslint-plugin-import`: the latter has not shipped ESLint 10 support.
 - **No barrel files for internal use.** They create circular-dependency hazards, slow tsc, and defeat tree-shaking. Allow barrels only at a package's public API boundary.
 - Enforce `import/no-cycle`.
 - Use `@/*` path aliases via `tsconfig.paths`.
@@ -62,7 +62,8 @@ Prefer `undefined` for "not provided / not set" — matches `?` optional semanti
 ## Tooling
 
 - **Formatter:** Prettier with `singleQuote`, `semi`, `trailingComma: 'all'`, `printWidth: 100`.
-- **Linter:** `eslint` flat config composing `@eslint/js`, `tseslint.configs.strictTypeChecked`, `tseslint.configs.stylisticTypeChecked`, and `eslint-config-prettier` last.
+- **Linter:** `eslint` flat config built with `defineConfig` from `eslint/config`, composing `@eslint/js`, `tseslint.configs.strictTypeChecked`, `tseslint.configs.stylisticTypeChecked`, and `eslint-config-prettier` last. Do not use `tseslint.config()` — it is deprecated, and `strictTypeChecked` enables `@typescript-eslint/no-deprecated`, so the config would fail its own lint run.
+- **TypeScript version:** pin to `typescript-eslint`'s `peerDependencies.typescript` range, not `latest`. TypeScript 7 (the native Go port) compiles fine but `typescript-eslint` refuses to load against it, and `strictTypeChecked` is the binding lint baseline here — so a lint path that will not load is disqualifying. This is blocked on unbuilt architectural work ([typescript-eslint#10940](https://github.com/typescript-eslint/typescript-eslint/issues/10940): no async parsers in ESLint, AST across the Go/WASM boundary), carries no timeline, and should be treated as a standing constraint. Re-test with `typescript@7` + `pnpm lint`; unpin only if it passes.
 - **Scripts:** `typecheck` = `tsc --noEmit`; `lint` = `eslint .`; `format:check` = `prettier --check .`; CI runs them in that order before `test`.
 
 ## Judgment calls this doc has already made

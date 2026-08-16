@@ -25,6 +25,7 @@
     "shlex",
     "signoff",
     "untokenizable",
+    "unbuilt",
     "xdescribe",
     "fdescribe",
     "skipif",

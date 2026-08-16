@@ -129,18 +129,61 @@ After `next dev` has run once and Next has generated its tsconfig, merge in:
 Write `$TARGET/eslint.config.js`:
 
 ```js
+import { defineConfig, globalIgnores } from 'eslint/config';
+import eslintConfigPrettier from 'eslint-config-prettier';
+import importX from 'eslint-plugin-import-x';
 import nextPlugin from 'eslint-config-next';
 import tseslint from 'typescript-eslint';
-import eslintConfigPrettier from 'eslint-config-prettier';
 
-export default [
-  ...nextPlugin.configs['core-web-vitals'],
-  ...nextPlugin.configs.typescript,
-  ...tseslint.configs.strictTypeChecked,
-  ...tseslint.configs.stylisticTypeChecked,
+export default defineConfig([
+  globalIgnores(['.next/**', 'dist/**', 'node_modules/**', 'coverage/**']),
+
+  nextPlugin.configs['core-web-vitals'],
+  nextPlugin.configs.typescript,
+  tseslint.configs.strictTypeChecked,
+  tseslint.configs.stylisticTypeChecked,
+
+  {
+    languageOptions: {
+      parserOptions: {
+        // Required: the type-checked presets above need type information,
+        // and root config files sit outside tsconfig's `include`.
+        projectService: {
+          allowDefaultProject: ['*.config.js', '*.config.mjs', '*.config.ts'],
+        },
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+    plugins: { 'import-x': importX },
+    rules: { 'import-x/no-default-export': 'error' },
+  },
+
+  {
+    // Next's file-system router REQUIRES default exports, and tools load
+    // config files the same way. Without this the named-exports-only rule
+    // makes every route and config file an error.
+    files: [
+      'app/**/{page,layout,loading,error,not-found,template,default,route}.{ts,tsx}',
+      'pages/**/*.{ts,tsx}',
+      'middleware.ts',
+      '**/*.config.{js,cjs,mjs,ts,mts,cts}',
+    ],
+    rules: { 'import-x/no-default-export': 'off' },
+  },
+
   eslintConfigPrettier,
-];
+]);
 ```
+
+Two notes:
+
+- Pin TypeScript to `typescript-eslint`'s supported range — see
+  `/bootstrap-typescript` step 5. `typescript@latest` will not lint.
+- Verify the `eslint-config-next` export shape against the version you
+  actually install; it has changed across majors. If its presets are still
+  arrays rather than flat-config objects, `defineConfig` flattens them
+  either way — but confirm the names (`core-web-vitals`, `typescript`)
+  still exist before declaring the bootstrap done.
 
 ### 7. Environment variables
 
