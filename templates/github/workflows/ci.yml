@@ -148,6 +148,47 @@ jobs:
         if: hashFiles('.markdownlint.json') != ''
         run: markdownlint "**/*.md"
 
+      # Guard against the two release-please misconfigurations that make a
+      # merged release PR do NOTHING — no tag, no GitHub release, no
+      # publish — while the workflow still exits 0. Both then wedge every
+      # later release until a tag is created by hand. release-please warns
+      # about them, but warnings in a green job scroll past, so this turns
+      # them into a failure on the PR that introduces them instead of a
+      # mystery at release time.
+      - name: validate release-please config
+        if: hashFiles('.github/release-please-config.json') != ''
+        run: |
+          cfg=.github/release-please-config.json
+
+          # `separate-pull-requests: false` enables release-please's Merge
+          # plugin, which rebuilds the release PR onto
+          # `release-please--branches--main` — a branch with no component
+          # segment. On merge, buildRelease() compares that branch's
+          # component (undefined) against the strategy's (the package
+          # name), mismatches, and does a bare `return`. Silent skip.
+          # With a single package, `true` still yields exactly one PR.
+          if [ "$(jq -r '.["separate-pull-requests"]' "$cfg")" = "false" ]; then
+            echo "::error file=$cfg::separate-pull-requests must not be false — the Merge plugin drops the branch component and release-please silently skips the release."
+            exit 1
+          fi
+
+          # release-please reads this pattern in BOTH directions. An
+          # override that omits ${component} or ${version} cannot be read
+          # back, so it loses the component and declines to tag.
+          pattern="$(jq -r '.["pull-request-title-pattern"] // empty' "$cfg")"
+          if [ -n "$pattern" ]; then
+            case "$pattern" in
+              *'${component}'*) ;;
+              *) echo "::error file=$cfg::pull-request-title-pattern omits \${component} and cannot round-trip — delete the override to use the default."; exit 1 ;;
+            esac
+            case "$pattern" in
+              *'${version}'*) ;;
+              *) echo "::error file=$cfg::pull-request-title-pattern omits \${version} and cannot round-trip — delete the override to use the default."; exit 1 ;;
+            esac
+          fi
+
+          echo "release-please config OK"
+
   test:
     name: test
     runs-on: ubuntu-latest
